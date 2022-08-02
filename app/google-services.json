@@ -1,0 +1,39 @@
+{
+  "project_info": {
+    "project_number": "261815503621",
+    "project_id": "androidbleserviceexplore-c9c2b",
+    "storage_bucket": "androidbleserviceexplore-c9c2b.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:261815503621:android:213e9e6aba756da377456c",
+        "android_client_info": {
+          "package_name": "packt.com.androidbleserviceexplorer"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "261815503621-cpil68fk9nrvhu8diaqh3jcrd7p99kbd.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCiCPym_2MX1vv7SGlPeHLDevuL5F9-fIg"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "261815503621-cpil68fk9nrvhu8diaqh3jcrd7p99kbd.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

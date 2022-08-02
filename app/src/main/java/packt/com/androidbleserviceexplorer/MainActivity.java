@@ -27,6 +27,9 @@ import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.ListView;
 
+import com.google.firebase.database.DatabaseReference;
+import com.google.firebase.database.FirebaseDatabase;
+
 import java.util.ArrayList;
 import java.util.List;
 
@@ -45,15 +48,17 @@ public class MainActivity extends AppCompatActivity {
     BluetoothLeScanner bluetoothLeScanner;
 
     private final static int REQUEST_ENABLE_BT = 1;
+    private final String HEART_RATE_SERVICE_ID = "180d";
+    public final String HEART_RATE_MEASUREMENT_ID = "2a37";
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        deviceListView = (ListView)findViewById(R.id.deviceListView);
-        startScanningButton = (Button)findViewById(R.id.StartScanButton);
-        stopScanningButton = (Button)findViewById(R.id.StopScanButton);
+        deviceListView = findViewById(R.id.deviceListView);
+        startScanningButton = findViewById(R.id.StartScanButton);
+        stopScanningButton = findViewById(R.id.StopScanButton);
         stopScanningButton.setVisibility(View.INVISIBLE);
 
         listAdapter = new ArrayAdapter<>(this, android.R.layout.simple_list_item_1);
@@ -146,6 +151,7 @@ public class MainActivity extends AppCompatActivity {
             super.onServicesDiscovered(gatt, status);
             final List<BluetoothGattService> services = gatt.getServices();
             runOnUiThread(new Runnable() {
+                @SuppressLint("MissingPermission")
                 @Override
                 public void run() {
                     for (int i = 0; i < services.size(); i++) {
@@ -155,6 +161,11 @@ public class MainActivity extends AppCompatActivity {
                         for (int j = 0; j < characteristics.size(); j++) {
                             buffer.append("\n");
                             buffer.append("Characteristics:" + characteristics.get(j).getUuid().toString());
+                            if (buffer.toString().contains(HEART_RATE_SERVICE_ID)) {
+                                if (characteristics.get(j).getUuid().toString().contains(HEART_RATE_MEASUREMENT_ID)) {
+                                    gatt.setCharacteristicNotification(characteristics.get(j), true);
+                                }
+                            }
                         }
                         listAdapter.add(buffer.toString());
                     }
@@ -162,6 +173,26 @@ public class MainActivity extends AppCompatActivity {
             });
         }
     };
+
+    public void onCharacteristicChanged(BluetoothGatt gatt, BluetoothGattCharacteristic characteristic) {
+        if (characteristic.getUuid().toString().contains(HEART_RATE_MEASUREMENT_ID)) {
+            int flag = characteristic.getProperties();
+            int format = -1;
+            if ((flag & 0x01) != 0) {
+                format = BluetoothGattCharacteristic.FORMAT_UINT16;
+            }
+            else {
+                format = BluetoothGattCharacteristic.FORMAT_UINT8;
+            }
+            final int heartRate = characteristic.getIntValue(format, 1);
+            Log.d(TAG, String.format("Received heart rate: %d", heartRate));
+            // Write a message to the database
+            FirebaseDatabase database = FirebaseDatabase.getInstance();
+            DatabaseReference myRef = database.getReference("heartrate");
+
+            myRef.setValue(new Integer(heartRate).toString());
+        }
+    }
 
     public void initializeBluetooth() {
         bluetoothManager = (BluetoothManager)getSystemService(Context.BLUETOOTH_SERVICE);
