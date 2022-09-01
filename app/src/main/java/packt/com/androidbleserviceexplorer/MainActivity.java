@@ -26,32 +26,25 @@ import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.ListView;
 
-import com.google.firebase.database.DatabaseReference;
-import com.google.firebase.database.FirebaseDatabase;
-
 import java.util.ArrayList;
 import java.util.List;
 
 public class MainActivity extends AppCompatActivity {
-    private static final String TAG = "BLEPackt";
+    private static final String TAG = "MainActivity";
+    private final static int REQUEST_ENABLE_BT = 1;
 
-    //    Button and List-View declarations from layout
     Button startScanningButton;
     Button stopScanningButton;
     ListView deviceListView;
 
     //    The ListViews in Android are backed by adapters, which hold the data being displayed in a ListView
-//    deviceList will hold the data to be displayed in ListView
+    //    deviceList will hold the data to be displayed in ListView
     ArrayAdapter<String> listAdapter;
     ArrayList<BluetoothDevice> deviceList;
 
     BluetoothManager bluetoothManager;
     BluetoothAdapter bluetoothAdapter;
     BluetoothLeScanner bluetoothLeScanner;
-
-    private final static int REQUEST_ENABLE_BT = 1;
-    private final String HEART_RATE_SERVICE_ID = "180d";
-    public final String HEART_RATE_MEASUREMENT_ID = "2a37";
 
     @SuppressLint("MissingPermission")
     @Override
@@ -72,7 +65,6 @@ public class MainActivity extends AppCompatActivity {
         stopScanningButton.setOnClickListener(view -> stopScanning());
         initializeBluetooth();
 
-//        OnClick function to connect to the device clicked
         deviceListView.setOnItemClickListener((adapterView, view, position, id) -> {
             stopScanning();
             listAdapter.clear();
@@ -94,21 +86,46 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-    //    The BluetoothLEScanner requires a callback function, which would be called for every device found
-    //    The devices found would be delivered as a result to this callback
-    private ScanCallback leScanCallBack = new ScanCallback() {
+    public void initializeBluetooth() {
+        bluetoothManager = (BluetoothManager) getSystemService(Context.BLUETOOTH_SERVICE);
+        bluetoothAdapter = bluetoothManager.getAdapter();
+        bluetoothLeScanner = bluetoothAdapter.getBluetoothLeScanner();
+    }
+
+    @SuppressLint("MissingPermission")
+    public void startScanning() {
+        listAdapter.clear();
+        deviceList.clear();
+        startScanningButton.setVisibility(View.INVISIBLE);
+        stopScanningButton.setVisibility(View.VISIBLE);
+        AsyncTask.execute(() -> bluetoothLeScanner.startScan(leScanCallBack));
+    }
+
+    @SuppressLint("MissingPermission")
+    public void stopScanning() {
+        startScanningButton.setVisibility(View.VISIBLE);
+        stopScanningButton.setVisibility(View.INVISIBLE);
+        AsyncTask.execute(() -> bluetoothLeScanner.stopScan(leScanCallBack));
+    }
+
+    //    The BluetoothLEScanner requires a callback function, which would be called for every device found.
+    private final ScanCallback leScanCallBack = new ScanCallback() {
         @Override
         public void onScanResult(int callbackType, ScanResult result) {
             if (result.getDevice() != null) {
                 if (!isDuplicate(result.getDevice())) {
                     synchronized (result.getDevice()) {
-                        @SuppressLint("MissingPermission")
-                        String itemDetail = result.getDevice().getName() == null ? result.getDevice().getAddress() : result.getDevice().getName();
+                        @SuppressLint("MissingPermission") String itemDetail = result.getDevice().getName() == null ? result.getDevice().getAddress() : result.getDevice().getName();
                         listAdapter.add(itemDetail);
                         deviceList.add(result.getDevice());
                     }
                 }
             }
+        }
+
+        @Override
+        public void onScanFailed(int errorCode) {
+            super.onScanFailed(errorCode);
         }
     };
 
@@ -132,6 +149,8 @@ public class MainActivity extends AppCompatActivity {
             super.onConnectionStateChange(gatt, status, newState);
             if (newState == BluetoothGatt.STATE_CONNECTED) {
                 Log.i(TAG, "onConnectionStateChange() - STATE_CONNECTED");
+                @SuppressLint("MissingPermission") boolean discoverServicesOk = gatt.discoverServices();
+                Log.d(TAG, "onConnectionStateChange: discovered Services: " + discoverServicesOk);
             } else if (newState == BluetoothGatt.STATE_DISCONNECTED) {
                 Log.i(TAG, "onConnectionStateChange() - STATE_DISCONNECTED");
             }
@@ -145,62 +164,15 @@ public class MainActivity extends AppCompatActivity {
             runOnUiThread(() -> {
                 for (int i = 0; i < services.size(); i++) {
                     BluetoothGattService service = services.get(i);
-                    StringBuilder buffer = new StringBuilder(services.get(i).getUuid().toString());
+                    StringBuilder buffer = new StringBuilder(service.getUuid().toString());
                     List<BluetoothGattCharacteristic> characteristics = service.getCharacteristics();
                     for (int j = 0; j < characteristics.size(); j++) {
                         buffer.append("\n");
-                        buffer.append("Characteristics:").append(characteristics.get(j).getUuid().toString());
-                        if (buffer.toString().contains(HEART_RATE_SERVICE_ID)) {
-                            if (characteristics.get(j).getUuid().toString().contains(HEART_RATE_MEASUREMENT_ID)) {
-                                gatt.setCharacteristicNotification(characteristics.get(j), true);
-                            }
-                        }
+                        buffer.append("Characteristic: ").append(characteristics.get(j).getUuid().toString());
                     }
                     listAdapter.add(buffer.toString());
                 }
             });
         }
-
-        @Override
-        public void onCharacteristicChanged(BluetoothGatt gatt, BluetoothGattCharacteristic characteristic) {
-            if (characteristic.getUuid().toString().contains(HEART_RATE_MEASUREMENT_ID)) {
-                int flag = characteristic.getProperties();
-                int format;
-                if ((flag & 0x01) != 0) {
-                    format = BluetoothGattCharacteristic.FORMAT_UINT16;
-                } else {
-                    format = BluetoothGattCharacteristic.FORMAT_UINT8;
-                }
-                final int heartRate = characteristic.getIntValue(format, 1);
-                Log.d(TAG, String.format("Received heart rate: %d", heartRate));
-                // Write a message to the database
-                FirebaseDatabase database = FirebaseDatabase.getInstance();
-                DatabaseReference myRef = database.getReference("heartrate");
-
-                myRef.setValue(Integer.toString(heartRate));
-            }
-        }
     };
-
-    public void initializeBluetooth() {
-        bluetoothManager = (BluetoothManager) getSystemService(Context.BLUETOOTH_SERVICE);
-        bluetoothAdapter = bluetoothManager.getAdapter();
-        bluetoothLeScanner = bluetoothAdapter.getBluetoothLeScanner();
-    }
-
-    @SuppressLint("MissingPermission")
-    public void startScanning() {
-        listAdapter.clear();
-        deviceList.clear();
-        startScanningButton.setVisibility(View.INVISIBLE);
-        stopScanningButton.setVisibility(View.VISIBLE);
-        AsyncTask.execute(() -> bluetoothLeScanner.startScan(leScanCallBack));
-    }
-
-    @SuppressLint("MissingPermission")
-    public void stopScanning() {
-        startScanningButton.setVisibility(View.VISIBLE);
-        stopScanningButton.setVisibility(View.INVISIBLE);
-        AsyncTask.execute(() -> bluetoothLeScanner.stopScan(leScanCallBack));
-    }
 }
