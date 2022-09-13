@@ -34,11 +34,15 @@ import android.widget.ListView;
 import android.widget.Toast;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
+import java.util.UUID;
 
 public class MainActivity extends AppCompatActivity {
     private static final String TAG = "MainActivity";
     private static final int LOCATION_PERMISSION_REQUEST_CODE = 2;
+    public static final String BATTERY_SERVICE_UUID = "180f";
+    public static final String BATTERY_LEVEL_UUID = "00002a19-0000-1000-8000-00805f9b34fb";
 
     Button startScanningButton;
     Button stopScanningButton;
@@ -179,6 +183,7 @@ public class MainActivity extends AppCompatActivity {
         @Override
         public void onScanFailed(int errorCode) {
             super.onScanFailed(errorCode);
+            Log.e(TAG, "onScanFailed: code:" + errorCode);
         }
     };
 
@@ -197,16 +202,24 @@ public class MainActivity extends AppCompatActivity {
     //    The connectGatt method requires a BluetoothGattCallback
     //    Here the results of connection state changes and services discovery would be delivered asynchronously.
     protected BluetoothGattCallback gattCallback = new BluetoothGattCallback() {
+        @SuppressLint("MissingPermission")
         @Override
         public void onConnectionStateChange(BluetoothGatt gatt, int status, int newState) {
             super.onConnectionStateChange(gatt, status, newState);
-            if (newState == BluetoothGatt.STATE_CONNECTED) {
-                Log.i(TAG, "onConnectionStateChange() - STATE_CONNECTED");
-                @SuppressLint("MissingPermission") boolean discoverServicesOk = gatt.discoverServices();
-                Toast.makeText(MainActivity.this, "Device Connected", Toast.LENGTH_LONG).show();
-                Log.d(TAG, "onConnectionStateChange: discovered Services: " + discoverServicesOk);
-            } else if (newState == BluetoothGatt.STATE_DISCONNECTED) {
-                Log.i(TAG, "onConnectionStateChange() - STATE_DISCONNECTED");
+            String address = gatt.getDevice().getAddress();
+
+            if (status == BluetoothGatt.GATT_SUCCESS) {
+                if (newState == BluetoothGatt.STATE_CONNECTED) {
+                    Log.w(TAG, "onConnectionStateChange() - Successfully connected to " + address);
+                    Toast.makeText(MainActivity.this, "Device Connected", Toast.LENGTH_LONG).show();
+                    boolean discoverServicesOk = gatt.discoverServices();
+                    Log.i(TAG, "onConnectionStateChange: discovered Services: " + discoverServicesOk);
+                } else if (newState == BluetoothGatt.STATE_DISCONNECTED) {
+                    Log.w(TAG, "onConnectionStateChange() - Successfully disconnected from " + address);
+                    gatt.close();
+                }
+            } else {
+                Log.w(TAG, "onConnectionStateChange: Error " + status + " encountered for " + address);
             }
         }
 
@@ -224,9 +237,28 @@ public class MainActivity extends AppCompatActivity {
                         buffer.append("\n");
                         buffer.append("Characteristic: ").append(characteristics.get(j).getUuid().toString());
                     }
+
+                    if (service.getUuid().toString().contains(BATTERY_SERVICE_UUID)) {
+                        BluetoothGattCharacteristic characteristic = service.getCharacteristic(UUID.fromString(BATTERY_LEVEL_UUID));
+                        gatt.readCharacteristic(characteristic);
+                        buffer.append("\nBattery Level ").append(Arrays.toString(characteristic.getValue()));
+                    }
+
                     listAdapter.add(buffer.toString());
                 }
             });
+        }
+
+        @Override
+        public void onCharacteristicRead(BluetoothGatt gatt, BluetoothGattCharacteristic characteristic, int status) {
+            super.onCharacteristicRead(gatt, characteristic, status);
+            if (status == BluetoothGatt.GATT_SUCCESS) {
+                Log.i(TAG, "onCharacteristicRead: Read characteristic " + characteristic.getUuid().toString());
+            } else if (status == BluetoothGatt.GATT_READ_NOT_PERMITTED) {
+                Log.e(TAG, "onCharacteristicRead: Read not permitted for " + characteristic.getUuid().toString());
+            } else {
+                Log.e(TAG, "onCharacteristicRead: Characteristic read failed for " + characteristic.getUuid().toString());
+            }
         }
     };
 }
