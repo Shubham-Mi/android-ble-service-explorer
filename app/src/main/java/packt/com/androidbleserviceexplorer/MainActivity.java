@@ -1,7 +1,12 @@
 package packt.com.androidbleserviceexplorer;
 
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.contract.ActivityResultContracts;
+import androidx.annotation.NonNull;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.app.ActivityCompat;
+import androidx.core.content.ContextCompat;
 
 import android.Manifest;
 import android.annotation.SuppressLint;
@@ -16,6 +21,7 @@ import android.bluetooth.le.BluetoothLeScanner;
 import android.bluetooth.le.ScanCallback;
 import android.bluetooth.le.ScanResult;
 import android.content.Context;
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.os.AsyncTask;
@@ -25,13 +31,14 @@ import android.view.View;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.ListView;
+import android.widget.Toast;
 
 import java.util.ArrayList;
 import java.util.List;
 
 public class MainActivity extends AppCompatActivity {
     private static final String TAG = "MainActivity";
-    private final static int REQUEST_ENABLE_BT = 1;
+    private static final int LOCATION_PERMISSION_REQUEST_CODE = 2;
 
     Button startScanningButton;
     Button stopScanningButton;
@@ -71,18 +78,59 @@ public class MainActivity extends AppCompatActivity {
             BluetoothDevice device = deviceList.get(position);
             device.connectGatt(MainActivity.this, true, gattCallback);
         });
+    }
 
-        if (bluetoothAdapter != null && !bluetoothAdapter.isEnabled()) {
-            Intent enableIntent = new Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE);
-            startActivityForResult(enableIntent, REQUEST_ENABLE_BT);
+    @Override
+    protected void onResume() {
+        super.onResume();
+        if (!bluetoothAdapter.isEnabled()) {
+            promptEnableBluetooth();
         }
+    }
 
-        if (this.checkSelfPermission(Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-            final AlertDialog.Builder builder = new AlertDialog.Builder(this);
-            builder.setTitle("This app needs location access");
-            builder.setMessage("This app needs location access so this app can detect peripherals");
-            builder.setPositiveButton(android.R.string.ok, null);
-            builder.show();
+    @SuppressLint("MissingPermission")
+    private void promptEnableBluetooth() {
+        if (!bluetoothAdapter.isEnabled()) {
+            Intent enableIntent = new Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE);
+            activityResultLauncher.launch(enableIntent);
+        }
+    }
+
+    ActivityResultLauncher<Intent> activityResultLauncher = registerForActivityResult(
+            new ActivityResultContracts.StartActivityForResult(),
+            result -> {
+                if (result.getResultCode() != MainActivity.RESULT_OK) {
+                    promptEnableBluetooth();
+                }
+            }
+    );
+
+    private boolean hasPermission(String permissionType) {
+        return ContextCompat.checkSelfPermission(this, permissionType) == PackageManager.PERMISSION_GRANTED;
+    }
+
+    private void requestLocationPermission() {
+        if (hasPermission(Manifest.permission.ACCESS_FINE_LOCATION)) {
+            return;
+        }
+        runOnUiThread(() -> {
+            AlertDialog alertDialog = new AlertDialog.Builder(this).create();
+            alertDialog.setTitle("Location Permission Required");
+            alertDialog.setMessage("This app needs location access to detect peripherals.");
+            alertDialog.setButton(DialogInterface.BUTTON_POSITIVE, "OK", (dialog, which) -> ActivityCompat.requestPermissions(MainActivity.this, new String[]{Manifest.permission.ACCESS_FINE_LOCATION}, LOCATION_PERMISSION_REQUEST_CODE));
+            alertDialog.show();
+        });
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        if (requestCode == LOCATION_PERMISSION_REQUEST_CODE) {
+            if (grantResults[0] == PackageManager.PERMISSION_DENIED) {
+                requestLocationPermission();
+            } else {
+                startScanning();
+            }
         }
     }
 
@@ -94,11 +142,16 @@ public class MainActivity extends AppCompatActivity {
 
     @SuppressLint("MissingPermission")
     public void startScanning() {
-        listAdapter.clear();
-        deviceList.clear();
-        startScanningButton.setVisibility(View.INVISIBLE);
-        stopScanningButton.setVisibility(View.VISIBLE);
-        AsyncTask.execute(() -> bluetoothLeScanner.startScan(leScanCallBack));
+        //    We only need Location when we scanning
+        if (!hasPermission(Manifest.permission.ACCESS_FINE_LOCATION)) {
+            requestLocationPermission();
+        } else {
+            listAdapter.clear();
+            deviceList.clear();
+            startScanningButton.setVisibility(View.INVISIBLE);
+            stopScanningButton.setVisibility(View.VISIBLE);
+            AsyncTask.execute(() -> bluetoothLeScanner.startScan(leScanCallBack));
+        }
     }
 
     @SuppressLint("MissingPermission")
@@ -150,6 +203,7 @@ public class MainActivity extends AppCompatActivity {
             if (newState == BluetoothGatt.STATE_CONNECTED) {
                 Log.i(TAG, "onConnectionStateChange() - STATE_CONNECTED");
                 @SuppressLint("MissingPermission") boolean discoverServicesOk = gatt.discoverServices();
+                Toast.makeText(MainActivity.this, "Device Connected", Toast.LENGTH_LONG).show();
                 Log.d(TAG, "onConnectionStateChange: discovered Services: " + discoverServicesOk);
             } else if (newState == BluetoothGatt.STATE_DISCONNECTED) {
                 Log.i(TAG, "onConnectionStateChange() - STATE_DISCONNECTED");
