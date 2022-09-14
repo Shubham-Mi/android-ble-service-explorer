@@ -39,8 +39,8 @@ import java.util.List;
 public class MainActivity extends AppCompatActivity {
     private static final String TAG = "MainActivity";
     private static final int LOCATION_PERMISSION_REQUEST_CODE = 2;
-    public static final String DEVICE_INFORMATION_SERVICE_UUID = "180a";
-    public static final String BATTERY_SERVICE_UUID = "180f";
+    private static final String DEVICE_INFORMATION_SERVICE_UUID = "180a";
+    private static final String BATTERY_SERVICE_UUID = "180f";
 
     Button startScanningButton;
     Button stopScanningButton;
@@ -204,6 +204,8 @@ public class MainActivity extends AppCompatActivity {
     //    The connectGatt method requires a BluetoothGattCallback
     //    Here the results of connection state changes and services discovery would be delivered asynchronously.
     protected BluetoothGattCallback gattCallback = new BluetoothGattCallback() {
+        private volatile boolean isOnCharacteristicReadRunning = false;
+
         @SuppressLint("MissingPermission")
         @Override
         public void onConnectionStateChange(BluetoothGatt gatt, int status, int newState) {
@@ -234,27 +236,22 @@ public class MainActivity extends AppCompatActivity {
                     BluetoothGattService service = services.get(i);
                     List<BluetoothGattCharacteristic> characteristics = service.getCharacteristics();
 
-                    if (service.getUuid().toString().contains(DEVICE_INFORMATION_SERVICE_UUID)) {
+                    if (service.getUuid().toString().contains(DEVICE_INFORMATION_SERVICE_UUID) || service.getUuid().toString().contains(BATTERY_SERVICE_UUID)) {
                         Log.d(TAG, "onServicesDiscovered: Device Information Service Discovered");
                         StringBuilder buffer = new StringBuilder(service.getUuid().toString());
                         for (int j = 0; j < characteristics.size(); j++) {
-                            buffer.append("\n");
-                            buffer.append("Characteristic: ").append(characteristics.get(j).getUuid().toString());
-                            try {
-                                Thread.sleep(3000);
-                            } catch (InterruptedException e) {
-                                e.printStackTrace();
+                            BluetoothGattCharacteristic characteristic = characteristics.get(j);
+                            buffer.append("\n\nCharacteristic: ");
+                            buffer.append("\nUUID: ").append(characteristic.getUuid().toString());
+                            isOnCharacteristicReadRunning = true;
+                            gatt.readCharacteristic(characteristic);
+                            while (isOnCharacteristicReadRunning) {
+//                                Do nothing
+//                                Wait while the characteristic is being read in onCharacteristicRead function
                             }
-                            gatt.readCharacteristic(characteristics.get(j));
+                            buffer.append("\nValue: ").append(Arrays.toString(characteristic.getValue()));
                         }
                         listAdapter.add(buffer.toString());
-                    }
-
-                    if (service.getUuid().toString().contains(BATTERY_SERVICE_UUID)) {
-                        Log.d(TAG, "onServicesDiscovered: Battery Service Discovered");
-                        for (int j = 0; j < characteristics.size(); j++) {
-                            gatt.readCharacteristic(characteristics.get(j));
-                        }
                     }
                 }
             });
@@ -270,6 +267,8 @@ public class MainActivity extends AppCompatActivity {
             } else {
                 Log.e(TAG, "onCharacteristicRead: Characteristic read failed for " + characteristic.getUuid().toString());
             }
+
+            isOnCharacteristicReadRunning = false;
         }
     };
 }
