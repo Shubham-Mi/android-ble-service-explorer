@@ -32,8 +32,9 @@ import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.ListView;
 
+import java.math.BigInteger;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 
 public class MainActivity extends AppCompatActivity {
@@ -41,6 +42,15 @@ public class MainActivity extends AppCompatActivity {
     private static final int LOCATION_PERMISSION_REQUEST_CODE = 2;
     private static final String DEVICE_INFORMATION_SERVICE_UUID = "180a";
     private static final String BATTERY_SERVICE_UUID = "180f";
+    private static final String BATTERY_LEVEL_UUID = "2a19";
+    private static final String SYSTEM_ID_UUID = "2a23";
+    private static final String MODEL_NUMBER_STRING_UUID = "2a24";
+    private static final String SERIAL_NUMBER_STRING_UUID = "2a25";
+    private static final String FIRMWARE_REVISION_STRING_UUID = "2a26";
+    private static final String HARDWARE_REVISION_STRING_UUID = "2a27";
+    private static final String SOFTWARE_REVISION_STRING_UUID = "2a28";
+    private static final String MANUFACTURER_NAME_STRING_UUID = "2a29";
+    private static final String PNP_ID_UUID = "2a50";
 
     Button startScanningButton;
     Button stopScanningButton;
@@ -241,16 +251,37 @@ public class MainActivity extends AppCompatActivity {
                         StringBuilder buffer = new StringBuilder(service.getUuid().toString());
                         for (int j = 0; j < characteristics.size(); j++) {
                             BluetoothGattCharacteristic characteristic = characteristics.get(j);
+                            String characteristicUuid = characteristic.getUuid().toString();
                             buffer.append("\n\nCharacteristic: ");
-                            buffer.append("\nUUID: ").append(characteristic.getUuid().toString());
+                            buffer.append("\nUUID: ").append(characteristicUuid);
                             isOnCharacteristicReadRunning = true;
                             gatt.readCharacteristic(characteristic);
                             while (isOnCharacteristicReadRunning) {
 //                                Do nothing
 //                                Wait while the characteristic is being read in onCharacteristicRead function
                             }
-                            buffer.append("\nValue: ").append(Arrays.toString(characteristic.getValue()));
+
+                            if (characteristicUuid.contains(SYSTEM_ID_UUID)) {
+                                buffer.append("\nSystem Id: ").append(new BigInteger(characteristic.getValue()).longValue());
+                            } else if (characteristicUuid.contains(MODEL_NUMBER_STRING_UUID)) {
+                                buffer.append("\nModel Number: ").append(new String(characteristic.getValue(), StandardCharsets.UTF_8));
+                            } else if (characteristicUuid.contains(SERIAL_NUMBER_STRING_UUID)) {
+                                buffer.append("\nSerial Number: ").append(new String(characteristic.getValue(), StandardCharsets.UTF_8));
+                            } else if (characteristicUuid.contains(FIRMWARE_REVISION_STRING_UUID)) {
+                                buffer.append("\nFirmware Revision: ").append(new String(characteristic.getValue(), StandardCharsets.UTF_8));
+                            } else if (characteristicUuid.contains(HARDWARE_REVISION_STRING_UUID)) {
+                                buffer.append("\nHardware Revision: ").append(new String(characteristic.getValue(), StandardCharsets.UTF_8));
+                            } else if (characteristicUuid.contains(SOFTWARE_REVISION_STRING_UUID)) {
+                                buffer.append("\nSoftware Revision: ").append(new String(characteristic.getValue(), StandardCharsets.UTF_8));
+                            } else if (characteristicUuid.contains(MANUFACTURER_NAME_STRING_UUID)) {
+                                buffer.append("\nManufacturer Name: ").append(new String(characteristic.getValue(), StandardCharsets.UTF_8));
+                            } else if (characteristicUuid.contains(PNP_ID_UUID)) {
+                                buffer.append("\nPnP Id: ").append(new BigInteger(characteristic.getValue()).longValue());
+                            } else if (characteristicUuid.contains(BATTERY_LEVEL_UUID)) {
+                                buffer.append("\nBattery Level: ").append(new BigInteger(characteristic.getValue()).longValue());
+                            }
                         }
+                        Log.d(TAG, "onServicesDiscovered: New Service: " + buffer);
                         listAdapter.add(buffer.toString());
                     }
                 }
@@ -261,7 +292,7 @@ public class MainActivity extends AppCompatActivity {
         public void onCharacteristicRead(BluetoothGatt gatt, BluetoothGattCharacteristic characteristic, int status) {
             super.onCharacteristicRead(gatt, characteristic, status);
             if (status == BluetoothGatt.GATT_SUCCESS) {
-                Log.i(TAG, "onCharacteristicRead: Read characteristic: UUID: " + characteristic.getUuid().toString() + ", value: " + Arrays.toString(characteristic.getValue()));
+                Log.i(TAG, "onCharacteristicRead: Read characteristic: UUID: " + characteristic.getUuid().toString());
             } else if (status == BluetoothGatt.GATT_READ_NOT_PERMITTED) {
                 Log.e(TAG, "onCharacteristicRead: Read not permitted for " + characteristic.getUuid().toString());
             } else {
