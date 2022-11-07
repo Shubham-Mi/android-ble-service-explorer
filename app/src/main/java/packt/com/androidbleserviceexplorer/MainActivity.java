@@ -179,13 +179,16 @@ public class MainActivity extends AppCompatActivity {
 
     //    The BluetoothLEScanner requires a callback function, which would be called for every device found.
     private final ScanCallback leScanCallBack = new ScanCallback() {
+        @SuppressLint("MissingPermission")
         @Override
         public void onScanResult(int callbackType, ScanResult result) {
             if (result.getDevice() != null) {
                 if (!isDuplicate(result.getDevice())) {
                     synchronized (result.getDevice()) {
-                        @SuppressLint("MissingPermission") String itemDetail = result.getDevice().getName() == null ? result.getDevice().getAddress() : result.getDevice().getName();
-                        listAdapter.add(itemDetail);
+//                        @SuppressLint("MissingPermission") String itemDetail = result.getDevice().getName() == null ? result.getDevice().getAddress() : result.getDevice().getName();
+                        String itemDetails = result.getDevice().getAddress();
+                        itemDetails += result.getDevice().getName() == null ? "" : "(" + result.getDevice().getName() + ")";
+                        listAdapter.add(itemDetails);
                         deviceList.add(result.getDevice());
                     }
                 }
