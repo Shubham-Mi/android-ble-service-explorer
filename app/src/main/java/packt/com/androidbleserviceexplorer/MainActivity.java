@@ -86,7 +86,6 @@ public class MainActivity extends AppCompatActivity {
 
         deviceListView.setOnItemClickListener((adapterView, view, position, id) -> {
             stopScanning();
-            listAdapter.clear();
             BluetoothDevice device = deviceList.get(position);
             device.connectGatt(MainActivity.this, false, gattCallback);
         });
@@ -251,7 +250,7 @@ public class MainActivity extends AppCompatActivity {
 
                     if (service.getUuid().toString().contains(DEVICE_INFORMATION_SERVICE_UUID) || service.getUuid().toString().contains(BATTERY_SERVICE_UUID)) {
                         Log.d(TAG, "onServicesDiscovered: Device Information Service Discovered");
-                        StringBuilder buffer = new StringBuilder(service.getUuid().toString());
+                        StringBuilder buffer = new StringBuilder("Service Id: " + service.getUuid().toString());
                         for (int j = 0; j < characteristics.size(); j++) {
                             BluetoothGattCharacteristic characteristic = characteristics.get(j);
                             String characteristicUuid = characteristic.getUuid().toString();
@@ -285,7 +284,12 @@ public class MainActivity extends AppCompatActivity {
                             }
                         }
                         Log.d(TAG, "onServicesDiscovered: New Service: " + buffer);
-                        listAdapter.add(buffer.toString());
+                        AlertDialog alertDialog = new AlertDialog.Builder(MainActivity.this).setMessage(buffer.toString())
+                                .setTitle("Device Information")
+                                .setCancelable(false)
+                                .setPositiveButton("OK", (dialog, which) -> dialog.cancel())
+                                .create();
+                        alertDialog.show();
                     }
                 }
             });
