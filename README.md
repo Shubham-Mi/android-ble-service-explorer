@@ -31,17 +31,17 @@ The app searches for all the nearby BLE devices and then displays them on the UI
 
 ### Bluetooth Enable Request
 
-<img alt="Bluetooth Enable Request" height="450" src="/screenshots/Bluetooth%20Enable%20Request.png" width="333"/>
+<img alt="Bluetooth Enable Request" height="550" src="/screenshots/Bluetooth%20Enable%20Request.png" width="333"/>
 
 ### Main Page
 
-<img alt="Main page" height="450" src="/screenshots/Home%20Page.png" width="333"/>
+<img alt="Main page" height="550" src="/screenshots/Home%20Page.png" width="333"/>
 
 ### List of Devices
 
-<img alt="List of device" height="450" src="/screenshots/List%20of%20devices.png" width="333"/>
+<img alt="List of device" height="550" src="/screenshots/List%20of%20devices.png" width="333"/>
 
 ### Display important Services and their characteristics
 
-<img alt="Services and characteristics" height="450" src="/screenshots/Service%20and%20Characteristics.png" width="333"/>
+<img alt="Services and characteristics" height="550" src="/screenshots/Service%20and%20Characteristics.png" width="333"/>
 
