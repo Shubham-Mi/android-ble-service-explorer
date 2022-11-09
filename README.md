@@ -4,7 +4,7 @@ A service Explorer app which will scan manually through the use of start/stop bu
 ## What are BLE Profiles?
 BLE profiles are the description of the behavior of that BLE device. For example, Blood Pressure Profile.
 <br/><br/>
-![BLE Profiles](/screenshots/Profiles.png)
+<img alt="BLE Profiles" height="450" src="/screenshots/Profiles.png" width="333"/>
 <br/>
 
 ## What does the app do?
@@ -30,14 +30,18 @@ The app searches for all the nearby BLE devices and then displays them on the UI
 * In GattCallback, we discover all the services present in the device and and read their characteristics through <b>OnCharacteristicRead</b> function.
 
 ### Bluetooth Enable Request
-![Bluetooth Enable Request](/screenshots/Bluetooth%20Enable%20Request.png)
+
+<img alt="Bluetooth Enable Request" height="450" src="/screenshots/Bluetooth%20Enable%20Request.png" width="333"/>
 
 ### Main Page
-![Main page](/screenshots/Home%20Page.png)
+
+<img alt="Main page" height="450" src="/screenshots/Home%20Page.png" width="333"/>
 
 ### List of Devices
-![List of device](/screenshots/List%20of%20devices.png)
+
+<img alt="List of device" height="450" src="/screenshots/List%20of%20devices.png" width="333"/>
 
 ### Display important Services and their characteristics
-![Services and characteristics](/screenshots/Service%20and%20Characteristics.png)
+
+<img alt="Services and characteristics" height="450" src="/screenshots/Service%20and%20Characteristics.png" width="333"/>
 
